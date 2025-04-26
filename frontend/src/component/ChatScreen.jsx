@@ -7,18 +7,20 @@ import {
   MessageInput,
   MessageSeparator,
 } from "@chatscope/chat-ui-kit-react";
-import io from "socket.io-client";
+// import io from "socket.io-client";
+import { socket } from "../socket/socket";
 
-const socket = io.connect("http://192.168.11.50:5000");
+// const socket = io.connect("http://192.168.11.50:5000");
 
-const ChatScreen = ({ username, onExit }) => {
+const ChatScreen = ({ username, room, onExit }) => {
   const [messages, setMessages] = useState([]);
 
   // 入室メッセージの処理
   useEffect(() => {
     // 接続後にサーバーに自分の名前を送る
     // 開発モードだと、useEffectが２回呼び出されるので、注意
-    socket.emit("join", username);
+    // socket.emit("join", username);
+    socket.emit("joinRoom", { username, room });
 
     // 「○○さんが入室しました」の通知を受信
     socket.on("userJoined", (msg) => {
@@ -73,6 +75,7 @@ const ChatScreen = ({ username, onExit }) => {
   return (
     <div style={{ position: "relative", height: "500px" }}>
       <div style={{ padding: "10px", textAlign: "right", background: "#eee" }}>
+        <div>ルーム: {room}</div>
         <span style={{ marginRight: "1em" }}>ようこそ、{username} さん</span>
         <button onClick={handleExit}>退室</button>
       </div>
