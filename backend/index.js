@@ -6,30 +6,20 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
+// 登録されているチャットルームの一覧。
+// Mapで、ルームと入室人数を管理するように変更
+const rooms = new Map();
+
 // クライアントが接続
 io.on("connection", (socket) => {
   console.log("ユーザーが接続しました。Socket ID:", socket.id);
 
   const allMessages = [];
 
-  // 登録されているチャットルームの一覧。Setで重複を排除
-  const rooms = new Set(["Room1", "Room2"]);
-
   // 過去のメッセージを送信
   //   Message.find().then((messages) => {
   //     socket.emit("previousMessages", messages);
   //   });
-
-  // ユーザー名を登録
-  // socket.on("join", (username) => {
-  //   socket.username = username;
-
-  //   // 他のユーザーに「○○が入室しました」と通知
-  //   socket.broadcast.emit(
-  //     "userJoined",
-  //     `${username} さんが入室しました。id=${socket.id}`
-  //   );
-  // });
 
   // メッセージ受信
   socket.on("sendMessage", async (msg) => {
@@ -46,36 +36,32 @@ io.on("connection", (socket) => {
 
   // ユーザが退出したときの処理
   socket.on("leave", () => {
-    const { username, room } = socket;
-    // 送信元以外の全クライアントに送信
-    // socket.broadcast.emit("userJoined", `${username} さんが退室しました。`);
-    socket.to(room).emit("userJoined", `${username} さんが退室しました。`);
-    socket.leave(room);
-    socket.room = null;
+    console.log("ユーザーが退出しました");
+    handleLeave(socket);
   });
 
   // 切断時の処理
   socket.on("disconnect", () => {
-    const { username, room } = socket;
-    console.log("ユーザーが切断しました");
-    // if (socket.username) {
-    //   socket.broadcast.emit(
-    //     "userJoined",
-    //     `${socket.username} さんが退室しました。`
-    //   );
-    // }
-    socket.to(room).emit("userJoined", `${username} さんが退室しました。`);
-    socket.leave(room);
-    socket.room = null;
+    console.log("ユーザーが切断されました");
+    handleLeave(socket);
   });
 
   // チャットルームの一覧を取得
   socket.on("getRoomList", () => {
-    socket.emit("roomList", Array.from(rooms));
+    socket.emit("roomList", Array.from(rooms.keys()));
   });
 
   // チャットルームに入室
   socket.on("joinRoom", ({ username, room }) => {
+    // 入室するチャットルームを、一覧に追加
+    if (!rooms.has(room)) {
+      rooms.set(room, new Set());
+
+      // 全クライアントにルーム一覧を送信
+      io.emit("roomList", Array.from(rooms.keys()));
+    }
+    rooms.get(room).add(username);
+
     socket.join(room);
     socket.username = username;
     socket.room = room;
@@ -85,6 +71,28 @@ io.on("connection", (socket) => {
       .emit("userJoined", `${username} さんが入室しました。id=${socket.id}`);
   });
 });
+
+// 退出時の共通処理
+function handleLeave(socket) {
+  const { username, room } = socket;
+  if (!room || !username) return;
+
+  const roomUsers = rooms.get(room);
+  if (roomUsers) {
+    roomUsers.delete(username);
+
+    // 最後のユーザーならルームごと削除
+    if (roomUsers.size === 0) {
+      rooms.delete(room);
+      io.emit("roomList", Array.from(rooms.keys())); // 全員にルーム一覧を再送
+    }
+  }
+
+  // 送信元以外の全クライアントに送信
+  socket.to(room).emit("userJoined", `${username} さんが退室しました。`);
+  socket.leave(room);
+  socket.room = null;
+}
 
 // サーバー起動
 server.listen(5000, () => {
