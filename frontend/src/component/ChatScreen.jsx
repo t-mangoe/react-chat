@@ -6,6 +6,11 @@ import {
   Message,
   MessageInput,
   MessageSeparator,
+  ConversationHeader,
+  StarButton,
+  VoiceCallButton,
+  VideoCallButton,
+  InfoButton,
 } from "@chatscope/chat-ui-kit-react";
 // import io from "socket.io-client";
 import { socket } from "../socket/socket";
@@ -14,6 +19,7 @@ import { socket } from "../socket/socket";
 
 const ChatScreen = ({ username, room, onExit }) => {
   const [messages, setMessages] = useState([]);
+  const [userListStr, setUserListStr] = useState("");
 
   // 入室メッセージの処理
   useEffect(() => {
@@ -32,6 +38,10 @@ const ChatScreen = ({ username, room, onExit }) => {
         direction: "incoming",
       };
       setMessages((prev) => [...prev, systemMessage]);
+    });
+
+    socket.on("updateUserList", (msg) => {
+      setUserListStr(msg);
     });
 
     return () => {
@@ -75,11 +85,25 @@ const ChatScreen = ({ username, room, onExit }) => {
   return (
     <div style={{ position: "relative", height: "500px" }}>
       <div style={{ padding: "10px", textAlign: "right", background: "#eee" }}>
-        <div>ルーム: {room}</div>
+        {/* <div>ルーム: {room}</div> */}
         <span style={{ marginRight: "1em" }}>ようこそ、{username} さん</span>
         <button onClick={handleExit}>退室</button>
       </div>
 
+      <ConversationHeader>
+        <ConversationHeader.Back />
+        <div>ルーム: {room}</div>
+        <ConversationHeader.Content
+          info={`ルーム: ${room}`}
+          userName={userListStr}
+        />
+        <ConversationHeader.Actions>
+          <StarButton title="Add to favourites" />
+          <VoiceCallButton title="Start voice call" />
+          <VideoCallButton title="Start video call" />
+          <InfoButton title="Show info" />
+        </ConversationHeader.Actions>
+      </ConversationHeader>
       <MainContainer>
         <ChatContainer>
           <MessageList>

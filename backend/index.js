@@ -69,6 +69,8 @@ io.on("connection", (socket) => {
     socket
       .to(room)
       .emit("userJoined", `${username} さんが入室しました。id=${socket.id}`);
+    // ユーザリストの更新を実施
+    updateUserList(socket);
   });
 });
 
@@ -91,7 +93,23 @@ function handleLeave(socket) {
   // 送信元以外の全クライアントに送信
   socket.to(room).emit("userJoined", `${username} さんが退室しました。`);
   socket.leave(room);
+
+  // ユーザリストの更新を実施
+  updateUserList(socket);
+
   socket.room = null;
+}
+
+// クライアント側にルームに入室しているユーザリストを通知
+function updateUserList(socket) {
+  const { username, room } = socket;
+
+  // 登録されているユーザの名前一覧をカンマ区切りで文字列化
+  const usersNames = [...rooms.get(room)].join(",");
+  // 送信元以外の全クライアントに送信
+  socket.to(room).emit("updateUserList", usersNames);
+  // 自分のユーザ一覧を更新するため、自分にも送信
+  socket.emit("updateUserList", usersNames);
 }
 
 // サーバー起動
