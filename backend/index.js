@@ -1,6 +1,8 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const connectDB = require("./db");
+const Message = require("./models/Message");
 
 const app = express();
 const server = http.createServer(app);
@@ -9,6 +11,9 @@ const io = new Server(server, { cors: { origin: "*" } });
 // 登録されているチャットルームの一覧。
 // Mapで、ルームと入室人数を管理するように変更
 const rooms = new Map();
+
+// MongoDBとの接続処理
+connectDB();
 
 // クライアントが接続
 io.on("connection", (socket) => {
@@ -29,6 +34,14 @@ io.on("connection", (socket) => {
       id: socket.id,
       text: msg,
     });
+
+    // DBに保存
+    const dbMessage = await Message.create({
+      room,
+      username,
+      text: msg,
+    });
+
     // 送信元以外の全クライアントに送信
     // socket.broadcast.emit("receiveMessage", msg);
     socket.to(room).emit("receiveMessage", msg);
@@ -52,7 +65,7 @@ io.on("connection", (socket) => {
   });
 
   // チャットルームに入室
-  socket.on("joinRoom", ({ username, room }) => {
+  socket.on("joinRoom", async ({ username, room }) => {
     // 入室するチャットルームを、一覧に追加
     if (!rooms.has(room)) {
       rooms.set(room, new Set());
@@ -71,6 +84,18 @@ io.on("connection", (socket) => {
       .emit("userJoined", `${username} さんが入室しました。id=${socket.id}`);
     // ユーザリストの更新を実施
     updateUserList(socket);
+
+    try {
+      // 🔽 過去メッセージを取得（古い順）
+      const messages = await Message.find({ room })
+        .sort({ timestamp: 1 })
+        .limit(50); // 最初は50件くらいがおすすめ
+
+      // 🔽 入室した本人にだけ送る
+      socket.emit("chatHistory", messages);
+    } catch (err) {
+      console.error("履歴取得エラー:", err);
+    }
   });
 });
 

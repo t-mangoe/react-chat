@@ -66,6 +66,23 @@ const ChatScreen = ({ username, room, onExit }) => {
     return () => socket.off("receiveMessage");
   }, []);
 
+  // チャット履歴を表示する処理
+  useEffect(() => {
+    socket.on("chatHistory", (messages) => {
+      const formatted = messages.map((m) => ({
+        type: "message",
+        text: m.text,
+        sender: m.username,
+        direction: m.username === username ? "outgoing" : "incoming",
+        timestamp: m.timestamp,
+      }));
+
+      setMessages(formatted);
+    });
+
+    return () => socket.off("chatHistory");
+  }, [username]);
+
   const handleSendMessage = (text) => {
     setMessages([
       ...messages,
@@ -126,7 +143,7 @@ const ChatScreen = ({ username, room, onExit }) => {
                     direction: msg.direction,
                   }}
                 />
-              )
+              ),
             )}
           </MessageList>
           <MessageInput
