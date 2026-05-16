@@ -28,6 +28,9 @@ const ChatScreen = ({ username, room, onExit }) => {
     // socket.emit("join", username);
     socket.emit("joinRoom", { username, room });
 
+    // セッションストレージにユーザ名とルームの情報を保存
+    sessionStorage.setItem("chatUser", JSON.stringify({ username, room }));
+
     // 「○○さんが入室しました」の通知を受信
     socket.on("userJoined", (msg) => {
       const systemMessage = {
@@ -65,6 +68,23 @@ const ChatScreen = ({ username, room, onExit }) => {
 
     return () => socket.off("receiveMessage");
   }, []);
+
+  // チャット履歴を表示する処理
+  useEffect(() => {
+    socket.on("chatHistory", (messages) => {
+      const formatted = messages.map((m) => ({
+        type: "message",
+        text: m.text,
+        sender: m.username,
+        direction: m.username === username ? "outgoing" : "incoming",
+        timestamp: m.timestamp,
+      }));
+
+      setMessages(formatted);
+    });
+
+    return () => socket.off("chatHistory");
+  }, [username]);
 
   const handleSendMessage = (text) => {
     setMessages([
@@ -126,7 +146,7 @@ const ChatScreen = ({ username, room, onExit }) => {
                     direction: msg.direction,
                   }}
                 />
-              )
+              ),
             )}
           </MessageList>
           <MessageInput

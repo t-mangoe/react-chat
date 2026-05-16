@@ -8,23 +8,39 @@ import RoomListScreen from "./component/RoomListScreen";
 const App = () => {
   const [username, setUsername] = useState("");
   const [room, setRoom] = useState("");
+  const [isRestoring, setIsRestoring] = useState(true);
+
+  useEffect(() => {
+    // セッションストレージからユーザ名とルームの情報を復元
+    const saved = sessionStorage.getItem("chatUser");
+
+    if (saved) {
+      const { username: savedUsername, room: savedRoom } = JSON.parse(saved);
+
+      setUsername(savedUsername);
+      setRoom(savedRoom);
+    }
+
+    setIsRestoring(false);
+  }, []);
+
+  // 復元中は描画しない
+  if (isRestoring) return null;
 
   if (!username) return <NameInputScreen onEnter={setUsername} />;
   if (!room) return <RoomListScreen onEnterRoom={setRoom} />;
 
   return (
-    <ChatScreen username={username} room={room} onExit={() => setRoom("")} />
+    <ChatScreen
+      username={username}
+      room={room}
+      onExit={() => {
+        sessionStorage.removeItem("chatUser");
+        setUsername("");
+        setRoom("");
+      }}
+    />
   );
-
-  // return (
-  //   <>
-  //     {username ? (
-  //       <ChatScreen username={username} onExit={() => setUsername("")} />
-  //     ) : (
-  //       <NameInputScreen onEnter={setUsername} />
-  //     )}
-  //   </>
-  // );
 };
 
 export default App;

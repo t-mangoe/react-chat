@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  mongodb:
+    image: mongo:8.2
+    container_name: react-chat-mongodb
+    # restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      # 名前付きボリュームの場合
+      # - mongo_data:/data/db
+      # バインドマウントの場合
+      - ./mongo_data:/data/db
+
+volumes:
+  mongo_data:
