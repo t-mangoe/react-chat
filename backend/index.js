@@ -104,9 +104,18 @@ function handleLeave(socket) {
   const { username, room } = socket;
   if (!room || !username) return;
 
+  // ルームに入室しているユーザの一覧を取得
   const roomUsers = rooms.get(room);
   if (roomUsers) {
+    // 退出したユーザをルームのユーザ一覧から削除
     roomUsers.delete(username);
+
+    // 送信元以外の全クライアントに送信
+    socket.to(room).emit("userJoined", `${username} さんが退室しました。`);
+    socket.leave(room);
+
+    // ユーザリストの更新を実施
+    updateUserList(socket);
 
     // 最後のユーザーならルームごと削除
     if (roomUsers.size === 0) {
@@ -114,13 +123,6 @@ function handleLeave(socket) {
       io.emit("roomList", Array.from(rooms.keys())); // 全員にルーム一覧を再送
     }
   }
-
-  // 送信元以外の全クライアントに送信
-  socket.to(room).emit("userJoined", `${username} さんが退室しました。`);
-  socket.leave(room);
-
-  // ユーザリストの更新を実施
-  updateUserList(socket);
 
   socket.room = null;
 }
